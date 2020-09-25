@@ -651,9 +651,9 @@ def merge_index_image():
     args = [
         payload['binary_image'],
         payload['source_from_index'],
-        payload['target_index'],
         payload.get('deprecation_list'),
         request.id,
+        payload.get('target_index'),
         overwrite_from_index,
         payload.get('overwrite_from_index_token'),
     ]

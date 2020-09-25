@@ -7,6 +7,10 @@ from iib.exceptions import IIBError
 from iib.workers.tasks import build_merge_index_image
 
 
+@pytest.mark.parametrize(
+    'target_index, target_index_resolved',
+    (('target-from-index:1.0', 'target-index@sha256:resolved'), (None, None)),
+)
 @mock.patch('iib.workers.tasks.build_merge_index_image._update_index_image_pull_spec')
 @mock.patch('iib.workers.tasks.build_merge_index_image._verify_index_image')
 @mock.patch('iib.workers.tasks.build_merge_index_image._create_and_push_manifest_list')
@@ -36,22 +40,20 @@ def test_handle_merge_request(
     mock_capml,
     mock_vii,
     mock_uiips,
+    target_index,
+    target_index_resolved,
 ):
     prebuild_info = {
         'arches': {'amd64', 'other_arch'},
         'target_ocp_version': '4.6',
         'source_from_index_resolved': 'source-index@sha256:resolved',
-        'target_index_resolved': 'target-index@sha256:resolved',
+        'target_index_resolved': target_index_resolved,
     }
     mock_prfb.return_value = prebuild_info
     mock_gbfdl.return_value = ['some-bundle:1.0']
 
     build_merge_index_image.handle_merge_request(
-        'binary-image:1.0',
-        'source-from-index:1.0',
-        'target-from-index:1.0',
-        ['some-bundle:1.0'],
-        1,
+        'binary-image:1.0', 'source-from-index:1.0', ['some-bundle:1.0'], 1, target_index,
     )
 
     mock_cleanup.assert_called_once()
@@ -60,17 +62,21 @@ def test_handle_merge_request(
         1,
         overwrite_from_index_token=None,
         source_from_index='source-from-index:1.0',
-        target_index='target-from-index:1.0',
+        target_index=target_index,
     )
     mock_uiibs.assert_called_once_with(1, prebuild_info)
-    assert mock_gpb.call_count == 2
+    if target_index:
+        assert mock_gpb.call_count == 2
+        assert mock_vii.call_count == 2
+    else:
+        assert mock_gpb.call_count == 1
+        assert mock_vii.call_count == 1
     mock_abmis.assert_called_once()
     mock_gbfdl.assert_called_once()
     mock_geaps.assert_called_once()
     mock_dep_b.assert_called_once()
     assert mock_bi.call_count == 2
     assert mock_pi.call_count == 2
-    assert mock_vii.call_count == 2
     assert mock_capml.call_count == 1
     mock_uiips.assert_called_once()
 
@@ -117,9 +123,9 @@ def test_handle_merge_request_no_deprecate(
     build_merge_index_image.handle_merge_request(
         'binary-image:1.0',
         'source-from-index:1.0',
-        'target-from-index:1.0',
         ['some-bundle:1.0'],
         1,
+        'target-from-index:1.0',
     )
 
     mock_cleanup.assert_called_once()

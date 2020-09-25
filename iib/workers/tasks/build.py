@@ -716,10 +716,12 @@ def _prepare_request_for_build(
     if source_from_index:
         with set_registry_token(overwrite_from_index_token, source_from_index):
             source_from_index_resolved = _get_resolved_image(source_from_index)
+            source_from_index_arches = _get_image_arches(source_from_index_resolved)
             source_ocp_version = (
                 get_image_label(source_from_index_resolved, 'com.redhat.index.delivery.version')
                 or 'v4.5'
             )
+        arches = arches | source_from_index_arches
     else:
         source_from_index_resolved = None
         source_ocp_version = 'v4.5'

@@ -1104,12 +1104,9 @@ class RequestMergeIndexImage(Request, RequestIndexImageMixin):
 
         deprecation_list = request_kwargs.pop('deprecation_list', [])
         if not isinstance(deprecation_list, list) or any(
-            not item or not isinstance(item, str) or '@' not in item for item in deprecation_list
+            not item or not isinstance(item, str) for item in deprecation_list
         ):
-            raise ValidationError(
-                '"deprecation_list" should be an array of strings. '
-                'Each pull specification has to be defined via digest.'
-            )
+            raise ValidationError('"deprecation_list" should be an empty or an array of strings.')
 
         request_kwargs['deprecation_list'] = [
             Image.get_or_create(pull_specification=item) for item in deprecation_list
@@ -1129,8 +1126,8 @@ class RequestMergeIndexImage(Request, RequestIndexImageMixin):
 
         cls._from_json(
             request_kwargs,
-            additional_required_params=['source_from_index', 'target_index'],
-            additional_optional_params=['deprecation_list'],
+            additional_required_params=['source_from_index'],
+            additional_optional_params=['deprecation_list', 'target_index'],
             batch=batch,
         )
 
@@ -1149,7 +1146,7 @@ class RequestMergeIndexImage(Request, RequestIndexImageMixin):
         rv = super().to_json(verbose=verbose)
         rv.update(self.get_common_index_image_json())
         rv['source_from_index'] = self.source_from_index.pull_specification
-        rv['target_index'] = self.target_index.pull_specification
+        rv['target_index'] = getattr(self.target_index, 'pull_specification', None)
         rv['deprecation_list'] = [bundle.pull_specification for bundle in self.deprecation_list]
 
         return rv

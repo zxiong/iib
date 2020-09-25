@@ -124,7 +124,7 @@ def _get_bundles_from_deprecation_list(bundles, deprecation_list):
             deprecate_bundles.append(resolved_bundle)
 
     log.info(
-        'Bundles that will be deprecated from the index image: %s', ','.join(deprecate_bundles)
+        'Bundles that will be deprecated from the index image: %s', ', '.join(deprecate_bundles)
     )
     return deprecate_bundles
 
@@ -170,9 +170,9 @@ def _deprecate_bundles(
 def handle_merge_request(
     binary_image,
     source_from_index,
-    target_index,
     deprecation_list,
     request_id,
+    target_index=None,
     overwrite_from_index=False,
     overwrite_from_index_token=None,
 ):
@@ -208,8 +208,11 @@ def handle_merge_request(
         set_request_state(request_id, 'in_progress', 'Getting bundles present in the index images')
         log.info('Getting bundles present in the source index image')
         source_index_bundles = _get_present_bundles(source_from_index, temp_dir)
-        log.info('Getting bundles present in the target index image')
-        target_index_bundles = _get_present_bundles(target_index, temp_dir)
+
+        target_index_bundles = []
+        if target_index:
+            log.info('Getting bundles present in the target index image')
+            target_index_bundles = _get_present_bundles(target_index, temp_dir)
 
         arches = list(prebuild_info['arches'])
         arch = 'amd64' if 'amd64' in arches else arches[0]
@@ -253,9 +256,11 @@ def handle_merge_request(
     _verify_index_image(
         prebuild_info['source_from_index_resolved'], source_from_index, overwrite_from_index_token
     )
-    _verify_index_image(
-        prebuild_info['target_index_resolved'], target_index, overwrite_from_index_token
-    )
+
+    if target_index:
+        _verify_index_image(
+            prebuild_info['target_index_resolved'], target_index, overwrite_from_index_token
+        )
 
     output_pull_spec = _create_and_push_manifest_list(request_id, prebuild_info['arches'])
     _update_index_image_pull_spec(
@@ -265,4 +270,7 @@ def handle_merge_request(
         target_index,
         overwrite_from_index,
         overwrite_from_index_token,
+    )
+    set_request_state(
+        request_id, 'complete', 'The index image was successfully cleaned and updated.',
     )
